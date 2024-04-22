@@ -23,7 +23,10 @@
 #include <string.h>
 #include <time.h>
 #include <pigpio.h>
+#include <math.h>
 #include "sensorThread.h"
+
+#define SOUND_DIST_MULT 170
 
 extern volatile sig_atomic_t exitThread;
 extern pthread_mutex_t exitLock;
@@ -92,27 +95,21 @@ int sonarSensor(int pin, int trigger){  //returns distance between sonar and clo
     timedGPIOHigh(trigger, 15);         //start the sonar trigger
     clock_t echoUp, echoDown;
     float distance;
-    while(gpioRead(pin) == 0){       //wait until we get echo input
-    }
-    if(gpioRead(pin) != 0){          //once we get echo input,
-        echoUp = clock();           //keep track of how when we first receive echo input
-        while(gpioRead(pin) != 0){   //wait until echoing stops
-        }
-        if(gpioRead(pin) == 0){      //keep track of when echo input stops
-            echoDown = clock();
-        }
-    }
-    float timeEchoedSecs;
+    while(gpioRead(pin) == 0){          //wait until we get echo input
+    }                                   //once we get echo input,             
+    echoUp = clock();                   //keep track of how when we first receive echo input
+    while(gpioRead(pin) != 0){          //wait until echoing stops
+    }                                   // -- IMPORTANT -- : if sonar sensor freezes, its probably cos of this line
+    echoDown = clock();                 //                   so if it freezes then add error handler to catch it
+    float timeEchoedSecs;               //keep track of when echo input stops
+    
+    timeEchoedSecs = (float)(echoDown - echoUp) / CLOCKS_PER_SEC;   //calculate total uptime the echo input was up for
 
-        //calculate total uptime the echo input was up for
-    timeEchoedSecs = (float)(echoDown - echoUp) / CLOCKS_PER_SEC;   
-
-        //calculate distance between sonar and object in cm
-    distance = timeEchoedSecs * (float)SOUND_DIST_MULT * 100;
-
+    distance = timeEchoedSecs * (float)SOUND_DIST_MULT * 100;       //calculate distance between sonar and object in cm
+    int intDist = floor(distance);
         //printf("measured distance of %f centimeters\n", distance);
-    return distance;
-
+        //printf("measured distance of %d centimeters\n", intDist);
+    return intDist;                    
 }
 
 int timedGPIOHigh(int trigger, int duration){     // takes gpio trigger pin, and duration in microseconds to seend HIGH (1) signal for 

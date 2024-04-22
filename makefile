@@ -1,4 +1,4 @@
-ROOTNAME=followLine
+ROOTNAME=sensorLib
 CC=gcc
 CFLAGS= -g -I.
 DEPS = sensorThread.h

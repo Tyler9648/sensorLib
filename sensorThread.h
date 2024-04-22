@@ -14,6 +14,8 @@
 
 #ifndef SENSOR_THREAD
 #define SENSOR_THREAD
+
+
 typedef enum {      //  --  Types of sensors  --
     LINE = 0,       // -> Line sensor
     AVOID = 1,      // -> Obstacle sensor

@@ -5,7 +5,7 @@
 * Github-Name:: Tyler9648
 * Project:: Assignment 4 - Follow in line but stop
 *
-* File:: followLine.c 
+* File:: sensorLib.c 
 *
 * Description:: can follow a line and sense if it's
 * on white or black using a an optical sensor, and 
@@ -26,12 +26,15 @@
 
 #define LINESENSOR_GPIO 19              // sensor gpio pins 
 #define AVOIDSENSOR_GPIO 26
+#define SONARSENSOR_GPIO 23
+#define TRIGGER_GPIO 24
 
 #define ENABLE_LINESENSOR 1             // set to 1 to enable, 0 to disable
 #define ENABLE_AVOIDSENSOR 1
+#define ENABLE_SONARSENSOR 1
 #define ENABLE_TEST 0
 
-#define NUMTHREADS (ENABLE_LINESENSOR + ENABLE_AVOIDSENSOR + ENABLE_TEST)  // only need 2, one for each sensor
+#define NUMTHREADS (ENABLE_LINESENSOR + ENABLE_AVOIDSENSOR + ENABLE_TEST + ENABLE_SONARSENSOR)  // only need 2, one for each sensor
                                         // can be changed if more sensors/components are added
 
 pthread_mutex_t exitLock;
@@ -44,7 +47,7 @@ void progExit(int sig){                 // catch for ctr+c to exit so we can pro
     exitThread = 1;                                                                
 }                                      
 
-int main(int argc, char *argv[])        //main driver code 
+int main(int argc, char *argv[])        //main driver code, replace with functions to moduralize later, main should become sensorLibInit
 {  
     if (gpioInitialise() < 0){                          //initialize GPIO pins
         printf("\nGPIO initialization failed, now exiting\n\n");
@@ -65,6 +68,7 @@ int main(int argc, char *argv[])        //main driver code
     tArg* lineSensorArgs;
     tArg* avoidSensorArgs;
     tArg* testArgs;
+    tArg* sonarSensorArgs;
 
     int activeThreads = 0;
 
@@ -86,7 +90,16 @@ int main(int argc, char *argv[])        //main driver code
         pthread_create(&threadID[activeThreads], NULL, &sensor_thread, (void*)avoidSensorArgs);    
         activeThreads++;
     }
-
+    //prepare and launch avoidance sensor thread 
+    if(ENABLE_SONARSENSOR == 1){
+        sonarSensorArgs = (tArg*)malloc(sizeof(tArg));
+        sonarSensorArgs->senType = SONAR;
+        sonarSensorArgs->pin = SONARSENSOR_GPIO;
+        sonarSensorArgs->trigger = TRIGGER_GPIO;
+        sonarSensorArgs->value = -1;
+        pthread_create(&threadID[activeThreads], NULL, &sensor_thread, (void*)sonarSensorArgs);    
+        activeThreads++;
+    }
     //prepare and launch test sensor thread w/o pins 
     if(ENABLE_TEST == 1){
         testArgs = (tArg*)malloc(sizeof(tArg));
@@ -119,6 +132,12 @@ int main(int argc, char *argv[])        //main driver code
                 printf("Avoid sensor: obstacle detected\n");
             } else if(avoidSensorArgs->value == 1){
                 printf("Avoid sensor: no obstacles detected\n");
+            }
+        }
+
+        if(ENABLE_SONARSENSOR == 1 && sonarSensorArgs){         //read sonar sensor to get distance                                                     
+            if(sonarSensorArgs->value >= 0){
+                printf("Sonar sensor: distance is %d\n", sonarSensorArgs->value);
             }
         }
                                                                 //read test sensor to debug/test threads 
